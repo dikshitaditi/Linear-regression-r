@@ -1,0 +1,159 @@
+---
+title: "Mini Project 06"
+output: html_notebook
+---
+Abhilasha Devkar - acd170130
+Aditi Dxit - asd170007
+
+Contribution of team members : Both the team members worked on the project individually and then discussed and combined the results while writing the report.
+
+```{r}
+CancerMale <- read.csv(file="C:\\Notes\\Stats for DS\\MIni Projects\\MP_06\\prostate_cancer.csv", header =TRUE)
+```
+We will now evaluate the dependent variable distribution 
+```{r}
+boxplot(CancerMale$psa)
+```
+The outliers need to be dealt with for the regression to perform better. We can either do log transformation, replace these values with mean or drop the rows containing outliers. We will do log transformation in order to avoid loss of information.
+```{r}
+boxplot(log(CancerMale$psa, base = exp(1)))
+y <- log(CancerMale$psa, base = exp(1))
+```
+```{r}
+table(CancerMale$cancervol)
+table(CancerMale$weight)
+table(CancerMale$age)
+table(CancerMale$benpros)
+table(CancerMale$capspen)
+table(CancerMale$gleason)
+table(CancerMale$vesinv)
+```
+These observation can be used to study each of the independent(predictor variables).
+We will now observe the dstribution of y against each of the predictors:
+```{r}
+plot(CancerMale$cancervol, y)
+fitcancervol <- lm(y ~ cancervol, data =CancerMale)
+abline(fitcancervol)
+```
+We can infer a positive correlatioship
+```{r}
+plot(CancerMale$weight, y)
+fitwt <- lm(y ~ weight, data =CancerMale)
+abline(fitwt)
+
+```
+From the plot we can infer that not much of the variation can be explained by regressing only on weight
+```{r}
+plot(CancerMale$age, y)
+fitAge <- lm(y ~ age, data =CancerMale)
+abline(fitAge)
+```
+We can see a weak relationship
+```{r}
+plot(CancerMale$benpros, y)
+fitbenpros <- lm(y ~ benpros, data =CancerMale)
+abline(fitbenpros)
+```
+
+```{r}
+plot(CancerMale$capspen, y)
+fitCapspen <- lm(y ~ capspen, data =CancerMale)
+abline(fitCapspen)
+```
+This shows a positive relationship
+
+We will be analysing the correlations between each of the predictor and target variable
+
+```{r}
+c1 <- cor(y, CancerMale$cancervol )
+cat(c1,"CancerVol\n")
+c2 <- cor(y, CancerMale$vesinv )
+cat(c2,"Vesinv\n")
+c3 <- cor(y, CancerMale$gleason )
+cat(c3, "Gleason\n")
+c4 <- cor(y, CancerMale$capspen )
+cat(c4,"Capspen\n")
+c5 <- cor(y, CancerMale$age )
+cat(c5, "Age\n")
+c6 <- cor(y, CancerMale$benpros )
+cat(c6,"Benpros\n")
+c7 <- cor(y, CancerMale$weight )
+cat(c7,"Weight\n")
+
+```
+We will start including the attributes from highest to least correlations in our regression model and analyse using ANOVA to decide the sigificance of that predictor in the model
+
+```{r}
+fit1 <- lm(y ~ cancervol+factor(vesinv), data = CancerMale)
+anova(fit1)
+```
+We can see that the p value is less than 0.05. Hence this model can be considered significant.
+
+```{r}
+summary(fitcancervol)
+summary(fit1)
+```
+We observe that adjusted R-squared value improves on including Vesinv wth cancervol. So we will consider fit1 for the next steps.
+
+We will check the partial f statistic for the predictor gleason
+```{r}
+fit2 <- lm(y ~ cancervol+factor(vesinv)+gleason, data = CancerMale)
+anova(fit1,fit2)
+summary(fit2)
+```
+We can see that the pvalue is less than 0.05. Hence gleason is a significant addition to the model. Now we will add the next parameter
+From the adjusted R-squared statistic we can infer that this model, it is better than the earlier values because we can see increase from earlier model. So we can continue with this model
+```{r}
+fit3 <- lm(y ~ cancervol+factor(vesinv)+gleason+capspen, data = CancerMale)
+anova(fit3,fit2)
+summary(fit3)
+```
+The adjusted R-squared staistic has decreased and also the p value is quite large 0.4985, we can infer that this attribute is not significant in the model. We will not add it in the model to keep it concise. We will continue with  and include Age
+```{r}
+fit4 <- lm(y ~ cancervol+factor(vesinv)+gleason+age, data = CancerMale)
+anova(fit4,fit2)
+summary(fit4)
+```
+Even the predictor age is not significant since the p-value is >0.05. We still continue with fit2.
+```{r}
+fit5 <- lm(y ~ cancervol+factor(vesinv)+gleason+benpros, data = CancerMale)
+anova(fit5,fit2)
+summary(fit5)
+```
+The p-value is extremely small so we can infer that benpros makes a highly significant cotribution to the regression. We can also notice the increment in the adjusted R-squared value in fit5. Hence we will choose this model and go ahead.
+```{r}
+fit6 <- lm(y ~ cancervol+factor(vesinv)+gleason+benpros + weight, data = CancerMale)
+anova(fit5,fit6)
+summary(fit6)
+```
+Addition of weight predictor to the model does not improve the adjusted R-squared value, neither does it have a significant p-value. So we drop the attribute from model.
+After analysing all the above models, we choose fit5 as the best one.
+Now we will verify the above result by comparing fit12 with automatic stepwise model selection procedures based on AIC
+
+
+```{r}
+fit5.forward <- step(lm(y ~ 1, data = CancerMale), scope = list(upper= ~cancervol + factor(vesinv) + gleason + benpros + weight + age + capspen), direction = "forward")
+
+```
+We can see the AIC  is -48.21 for the model which has selected parameters just as ours in fit5. 
+
+We need to verify the model assumptions.
+```{r}
+plot(fitted(fit5), resid(fit5))
+abline(h=0)
+
+```
+The rsidues are randomly dispersed and hence selecting a linear regression model suits the given data.
+```{r}
+qqnorm(resid(fit5))
+qqline(resid(fit5))
+```
+The residues show a good fit for normal distribution.
+
+Now our model is set to test. 
+out of the selected features, vesinv is a categorical variable. We will use the most frequent value in the sample test data; for the rest of the predictors, we will use means.
+```{r}
+exp(-0.65013 + 0.06488*mean(CancerMale$cancervol) + 0.68*0 + 0.33376*mean(CancerMale$gleason) + 0.09136*mean(CancerMale$benpros))
+```
+
+
